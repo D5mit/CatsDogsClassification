@@ -115,6 +115,31 @@ def load_checkpoint(filepath):
 
     return model
 
+
+def imshow(image, ax=None, title=None, normalize=True):
+    """Imshow for Tensor."""
+    if ax is None:
+        fig, ax = plt.subplots()
+    image = image.numpy().transpose((1, 2, 0))
+
+    if normalize:
+        mean = np.array([0.485, 0.456, 0.406])
+        std = np.array([0.229, 0.224, 0.225])
+        image = std * image + mean
+        image = np.clip(image, 0, 1)
+
+    ax.imshow(image)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.tick_params(axis='both', length=0)
+    ax.set_xticklabels('')
+    ax.set_yticklabels('')
+
+
+    return ax
+
 # Main Program
 # Define transforms for the training data and testing data
 print('----------------------------------------')
@@ -154,9 +179,12 @@ imodel = myNetwork(inputsize, outputsize, [512, 256, 128])
 criterion = nn.NLLLoss()
 optimizer = optim.Adam(imodel.parameters(), lr=0.001)
 
-doTraining = False
 
-if doTraining == True:
+# Manually test the model
+doTraining = input('Train the model (y/n)? : ')
+
+if doTraining == 'y' or doTraining == '':
+
     print('Training Model: ')
     print(imodel)
 
@@ -175,61 +203,43 @@ if doTraining == True:
 
     torch.save(checkpoint, 'checkpoint.pth')
 
-model = load_checkpoint('checkpoint.pth')
-print(model)
+# Manually test the model
+itest = 'y'
+itest = input('Manualy test model (y/n)? : ')
 
+if itest == 'y' or itest == '':
 
-#-test Model
-model.eval()            # model is now used to testing, nothing new to be learnt
+    print('Testing model:')
+    model = load_checkpoint('checkpoint.pth')
+    print(model)
 
-# predict
-testImages, labels = next(iter(testloader))
-testImages.resize_(images.size()[0], 1024)
+    #-test Model
+    model.eval()            # model is now used to testing, nothing new to be learnt
 
-# itestImage[0] = testImages[0]
+    # load minages
+    testImages, testLabels = next(iter(testloader))
 
-# images, labels = next(iter(testloader))
+    # Show image
+    fig, axes = plt.subplots(figsize=(10, 4), ncols=1)
+    ax = axes[0]
+    imshow(testImages[0], ax=ax)
+    plt.show()
 
-# print(itestImage.shape)
+    # prepare image for input to NN
+    testImages = testImages.resize_(testImages.size()[0], inputsize)
+    testImage = torch.empty(1, inputsize)
+    testImage[0] = testImages[0]
 
-# Turn off gradients to speed up this part
-with torch.no_grad():
-    logits = model.forward(testImages)
+    # Turn off gradients to speed up this part
+    with torch.no_grad():
+        output = model.forward(testImage)
 
-# Output of the network are logits, need to take softmax for probabilities
-ps = F.softmax(logits, dim=1)
+    # Output of the network are logits, need to take softmax for probabilities
+    ps = F.softmax(output, dim=1)
 
-# print prediction
-# print(np.around(ps, decimals=3))
+    # print prediction
+    print(np.around(ps, decimals=3))
 
-print(ps[0])
-
-prednr = np.argmax(ps[0])
-print(prednr)
-print(labels[0])
-
-
-
-#
-# #########
-#
-# # predict
-# images, labels = next(iter(testloader))
-#
-#
-#
-# img = images[0].view(1, 784)
-#
-# # Turn off gradients to speed up this part
-# with torch.no_grad():
-#     logits = model.forward(img)
-#
-# # Output of the network are logits, need to take softmax for probabilities
-# ps = F.softmax(logits, dim=1)
-#
-# # print prediction
-# print(np.around(ps, decimals=3))
-#
-# prednr = np.argmax(ps)
-# print(prednr)
-# print(labels[0])
+    prednr = np.argmax(ps[0])
+    print(prednr)
+    print(testLabels[0])
