@@ -63,7 +63,7 @@ def validation(model, testloader, criterion, inputsize):
 
 def modelTrain(model, trainloader, testloader, criterion, optimizer, inputsize, epochs=5, print_every=40):
 
-    print('Start Training...')
+    print('Start Training....')
 
     steps = 0
     running_loss = 0
