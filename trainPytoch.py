@@ -1,3 +1,6 @@
+import os
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
+
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -5,9 +8,6 @@ from torch import optim
 from torchvision import datasets, transforms
 import matplotlib.pyplot as plt
 import numpy as np
-
-data_dir = 'ImagesCatDog'
-
 
 class myNetwork(nn.Module):
     def __init__(self, input_size, output_size, hidden_layers, drop_p=0.5):
@@ -117,8 +117,11 @@ def load_checkpoint(filepath):
 
 # Main Program
 # Define transforms for the training data and testing data
+print('----------------------------------------')
 print('Cat and Dog Image training using PyTorch')
 print('----------------------------------------')
+
+data_dir = 'ImagesCatDog'
 
 train_transforms = transforms.Compose([transforms.Resize(255),
                                        transforms.CenterCrop(224),
@@ -133,16 +136,16 @@ test_transforms = transforms.Compose([transforms.Resize(255),
                                                            [0.229, 0.224, 0.225])])
 
 # Pass transforms in here, then run the next cell to see how the transforms look
-print('Training data directory:' + data_dir )
+print('Training data directory: ' + data_dir )
 train_data = datasets.ImageFolder(data_dir + '/train', transform=train_transforms)
 test_data = datasets.ImageFolder(data_dir + '/test', transform=test_transforms)
 
 trainloader = torch.utils.data.DataLoader(train_data, batch_size=128, shuffle=True)
-testloader = torch.utils.data.DataLoader(test_data, batch_size=32)
+testloader = torch.utils.data.DataLoader(test_data, batch_size=32, shuffle=True)
 
 images, labels = next(iter(trainloader))
-print('TrainLoaded Images input size:' + str(images.shape))
-print('TrainLoaded Labels input size:' + str(images.shape))
+print('TrainLoaded Images input size: ' + str(images.shape))
+print('TrainLoaded Labels input size: ' + str(images.shape))
 
 # Create the network, define the criterion and optimizer
 inputsize = 1024
@@ -151,52 +154,82 @@ imodel = myNetwork(inputsize, outputsize, [512, 256, 128])
 criterion = nn.NLLLoss()
 optimizer = optim.Adam(imodel.parameters(), lr=0.001)
 
-print('Training Model:')
-print(imodel)
+doTraining = False
 
-# train the model
-modelTrain(imodel, trainloader, testloader, criterion, optimizer, inputsize, epochs=1)
+if doTraining == True:
+    print('Training Model: ')
+    print(imodel)
 
-print('')
-print('Model after training:')
-print("Our model: \n\n", imodel, '\n')
-print("The state dict keys: \n\n", imodel.state_dict().keys())
+    # train the model
+    modelTrain(imodel, trainloader, testloader, criterion, optimizer, inputsize, epochs=1)
 
+    print('')
+    print('Model after training: ')
 
-# save and reload model
-# Todo must still test
-checkpoint = {'input_size': 2014,
-              'output_size': 2,
-              'hidden_layers': [each.out_features for each in imodel.hidden_layers],
-              'state_dict': imodel.state_dict()}
+    # save and reload model
+    # Todo must still test
+    checkpoint = {'input_size': inputsize,
+                  'output_size': outputsize,
+                  'hidden_layers': [each.out_features for each in imodel.hidden_layers],
+                  'state_dict': imodel.state_dict()}
 
-torch.save(checkpoint, 'checkpoint.pth')
+    torch.save(checkpoint, 'checkpoint.pth')
 
 model = load_checkpoint('checkpoint.pth')
 print(model)
 
 
-# test and use model
+#-test Model
+model.eval()            # model is now used to testing, nothing new to be learnt
 
 # predict
-images, labels = next(iter(testloader))
+testImages, labels = next(iter(testloader))
+testImages.resize_(images.size()[0], 1024)
 
-# 0
-plt.imshow(images[0].numpy().squeeze(), cmap='Greys_r');
-plt.show()
+# itestImage[0] = testImages[0]
 
-img = images[0].view(1, inputsize)
+# images, labels = next(iter(testloader))
+
+# print(itestImage.shape)
 
 # Turn off gradients to speed up this part
 with torch.no_grad():
-    logits = model.forward(img)
+    logits = model.forward(testImages)
 
 # Output of the network are logits, need to take softmax for probabilities
 ps = F.softmax(logits, dim=1)
 
 # print prediction
-print(np.around(ps, decimals=3))
+# print(np.around(ps, decimals=3))
 
-prednr = np.argmax(ps)
+print(ps[0])
+
+prednr = np.argmax(ps[0])
 print(prednr)
 print(labels[0])
+
+
+
+#
+# #########
+#
+# # predict
+# images, labels = next(iter(testloader))
+#
+#
+#
+# img = images[0].view(1, 784)
+#
+# # Turn off gradients to speed up this part
+# with torch.no_grad():
+#     logits = model.forward(img)
+#
+# # Output of the network are logits, need to take softmax for probabilities
+# ps = F.softmax(logits, dim=1)
+#
+# # print prediction
+# print(np.around(ps, decimals=3))
+#
+# prednr = np.argmax(ps)
+# print(prednr)
+# print(labels[0])
